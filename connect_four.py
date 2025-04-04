@@ -8,7 +8,7 @@ from iterative_deepening import IterativeDeepeningAI
 from mcts import MonteCarloTreeSearch 
 
 class Connect4:
-    def __init__(self, ai_algorithm):
+    def __init__(self):
         """Initialize the game, set up Pygame, and create the game board."""
         pygame.init()
         self.screen = None
@@ -17,7 +17,6 @@ class Connect4:
         self.current_player = PLAYER_TURN
         self.game_over = False
         self.history = []
-        self.ai = ai_algorithm(self.board)  # Use the provided AI algorithm
         
     def create_screen(self):
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -63,10 +62,16 @@ class Connect4:
         self.screen.blit(label, (WIDTH // 2 - label.get_width() // 2, SQ_SIZE // 4))
         pygame.display.update()
 
-    def play(self):
+    # play function to play with player vs ai
+    def play(self, ai_class):
         self.create_screen()
         self.restart_game()
         self.draw_board()
+        ai = ai_class(self.board)
+        
+
+        total_ai_time = 0
+        ai_moves = 0
         
         while True:
             for event in pygame.event.get():
@@ -77,6 +82,8 @@ class Connect4:
                 if event.type == pygame.KEYDOWN and self.game_over and event.key == pygame.K_r:
                     self.restart_game()
                     self.draw_board()
+                    total_ai_time = 0
+                    ai_moves = 0
 
                 if event.type == pygame.MOUSEMOTION and not self.game_over:
                     col = event.pos[0] // SQ_SIZE
@@ -89,9 +96,97 @@ class Connect4:
                             self.make_move(col)
                             
             if self.current_player == AI_TURN and not self.game_over:
-                col = self.ai.get_move(self.board)
+                start = time.time()
+                col = ai.get_move(self.board)
+                end = time.time()
                 if col is not None:
+                    total_ai_time += (end - start)
+                    ai_moves += 1
                     self.make_move(col)
+
+            # End of game: show duration
+            if self.game_over:
+                if ai_moves > 0:
+                    avg_time = total_ai_time / ai_moves
+                    print(f"AI made {ai_moves} moves.")
+                    print(f"Total AI thinking time: {total_ai_time:} seconds")
+                    print(f"Average time per move: {avg_time:} seconds")
+                else:
+                    print("AI made no moves.")
+
+
+    def play_game(self, ai1_class, ai2_class, rounds=10):
+        """Simulate a series of games between two AIs."""
+        results = {'ai1_wins': 0, 'ai2_wins': 0, 'draws': 0}
+        self.create_screen()
+        for _ in range(rounds):
+            self.restart_game()
+            ai1, ai2 = ai1_class(self.board), ai2_class(self.board)
+            self.current_player = PLAYER_TURN
+            self.draw_board()
+
+            while not self.game_over:
+                pygame.event.pump()
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                self.handle_player_turn(ai1, ai2)
+
+            # Update results
+            self.update_results(results)
+            time.sleep(0.5)
+
+        return results
+
+    def handle_player_turn(self, ai1, ai2):
+        """Handle the turn of the current player (either AI or human)."""
+        # Check if it's the player's turn or the AI's turn
+        if self.current_player == PLAYER_TURN and not self.game_over:
+            col = ai1.get_move(self.board)
+            if col is not None:
+                self.make_move(col)
+
+        # If it's the AI's turn, let the AI make a move
+        elif self.current_player == AI_TURN and not self.game_over:
+            col = ai2.get_move(self.board)
+            if col is not None:
+                self.make_move(col)
+
+        time.sleep(0.1)
+
+    def update_results(self, results):
+        """Update the results dictionary based on the game outcome."""
+        if self.board.has_won(PLAYER_TURN):
+            #print(f"first one wins")
+            results['ai1_wins'] += 1
+        elif self.board.has_won(AI_TURN):
+            #print(f"second one wins")
+            results['ai2_wins'] += 1
+        else:
+            #print(f"draw")
+            results['draws'] += 1
+
+    def play_ai_vs_ai(self, ai1_class, ai2_class, rounds=10):
+        """Run the simulation: play 10 games, then swap players and play another 10 games."""
+        print("Playing the first 10 games...")
+        results = self.play_game(ai1_class, ai2_class, rounds)
+
+        print(f"\nFirst 10 games complete:")
+        print(f"{ai1_class.__name__} wins: {results['ai1_wins']}")
+        print(f"{ai2_class.__name__} wins: {results['ai2_wins']}")
+        print(f"Draws: {results['draws']}")
+
+        # Swap players and play another set of 10 games
+        print("\nSwapping players and playing another 10 games...")
+        results_swapped = self.play_game(ai2_class, ai1_class, rounds)
+
+        print(f"\nSecond 10 games complete (after swapping players):")
+        print(f"{ai2_class.__name__} wins: {results_swapped['ai1_wins']}")  # Now ai2_class is the 'first' player
+        print(f"{ai1_class.__name__} wins: {results_swapped['ai2_wins']}")  # Now ai1_class is the 'second' player
+        print(f"Draws: {results_swapped['draws']}")
+
+        pygame.quit()
 
     def restart_game(self):
         self.board = Board()
@@ -107,8 +202,25 @@ class Connect4:
             pygame.display.update()
             time.sleep(0.05)
 
+    
+def simulate_games(ai1_class, ai2_class):
+        game = Connect4()
+        game.play_ai_vs_ai(ai1_class, ai2_class)
+
 if __name__ == "__main__":
-    Connect4(Minimax).play()
-    #Connect4(GreedyAI).play()
-    #Connect4(IterativeDeepeningAI).play()
-    #Connect4(MonteCarloTreeSearch).play()
+
+    game = Connect4()
+    #game.play(Minimax)
+    #game.play(GreedyAI)
+    #game.play(MonteCarloTreeSearch)
+    game.play(IterativeDeepeningAI)
+
+    """simulate_games(Minimax, GreedyAI)
+    simulate_games(Minimax, MonteCarloTreeSearch)
+    simulate_games(Minimax, IterativeDeepeningAI)
+    simulate_games(GreedyAI, IterativeDeepeningAI)
+    simulate_games(GreedyAI, MonteCarloTreeSearch)
+    simulate_games(IterativeDeepeningAI, MonteCarloTreeSearch)"""
+
+
+
