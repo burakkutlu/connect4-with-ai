@@ -209,11 +209,13 @@ def simulate_games(ai1_class, ai2_class):
 
 if __name__ == "__main__":
 
-    game = Connect4()
+    #game = Connect4()
     #game.play(Minimax)
     #game.play(GreedyAI)
     #game.play(MonteCarloTreeSearch)
-    game.play(IterativeDeepeningAI)
+    #game.play(IterativeDeepeningAI)
+
+    simulate_games(Minimax, GreedyAI)
 
     """simulate_games(Minimax, GreedyAI)
     simulate_games(Minimax, MonteCarloTreeSearch)
