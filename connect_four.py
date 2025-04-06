@@ -113,11 +113,17 @@ class Connect4:
                     print(f"Average time per move: {avg_time:} seconds")
                 else:
                     print("AI made no moves.")
+                break
 
 
-    def play_game(self, ai1_class, ai2_class, rounds=10):
+    def play_game(self, ai1_class, ai2_class, rounds):
         """Simulate a series of games between two AIs."""
         results = {'ai1_wins': 0, 'ai2_wins': 0, 'draws': 0}
+        timings = {
+            'ai1_total_time': 0.0, 'ai1_moves': 0,
+            'ai2_total_time': 0.0, 'ai2_moves': 0
+        }
+
         self.create_screen()
         for _ in range(rounds):
             self.restart_game()
@@ -131,25 +137,37 @@ class Connect4:
                     if event.type == pygame.QUIT:
                         pygame.quit()
                         sys.exit()
+                active_player = self.current_player
+                # Zaman ölçümü burada olacak
+                start_time = time.time()
                 self.handle_player_turn(ai1, ai2)
+                elapsed = time.time() - start_time
 
-            # Update results
+                if active_player == PLAYER_TURN:
+                    timings['ai1_total_time'] += elapsed
+                    timings['ai1_moves'] += 1
+                else:
+                    timings['ai2_total_time'] += elapsed
+                    timings['ai2_moves'] += 1
+
             self.update_results(results)
             time.sleep(0.5)
 
-        return results
+        return results, timings
 
     def handle_player_turn(self, ai1, ai2):
         """Handle the turn of the current player (either AI or human)."""
         # Check if it's the player's turn or the AI's turn
         if self.current_player == PLAYER_TURN and not self.game_over:
             col = ai1.get_move(self.board)
+
             if col is not None:
                 self.make_move(col)
 
         # If it's the AI's turn, let the AI make a move
         elif self.current_player == AI_TURN and not self.game_over:
             col = ai2.get_move(self.board)
+
             if col is not None:
                 self.make_move(col)
 
@@ -167,24 +185,35 @@ class Connect4:
             #print(f"draw")
             results['draws'] += 1
 
-    def play_ai_vs_ai(self, ai1_class, ai2_class, rounds=10):
-        """Run the simulation: play 10 games, then swap players and play another 10 games."""
-        print("Playing the first 10 games...")
-        results = self.play_game(ai1_class, ai2_class, rounds)
+    def play_ai_vs_ai(self, ai1_class, ai2_class, rounds=1):
+        """Run the simulation: play {rounds} games, then swap players and play another {rounds} games."""
+        print(f"Playing the first {rounds} games...")
+        results, timings = self.play_game(ai1_class, ai2_class, rounds)
 
-        print(f"\nFirst 10 games complete:")
+        print(f"\nFirst {rounds} games complete:")
         print(f"{ai1_class.__name__} wins: {results['ai1_wins']}")
         print(f"{ai2_class.__name__} wins: {results['ai2_wins']}")
         print(f"Draws: {results['draws']}")
 
-        # Swap players and play another set of 10 games
-        print("\nSwapping players and playing another 10 games...")
-        results_swapped = self.play_game(ai2_class, ai1_class, rounds)
+        avg1 = timings['ai1_total_time'] / timings['ai1_moves'] if timings['ai1_moves'] > 0 else 0.0
+        avg2 = timings['ai2_total_time'] / timings['ai2_moves'] if timings['ai2_moves'] > 0 else 0.0
 
-        print(f"\nSecond 10 games complete (after swapping players):")
-        print(f"{ai2_class.__name__} wins: {results_swapped['ai1_wins']}")  # Now ai2_class is the 'first' player
-        print(f"{ai1_class.__name__} wins: {results_swapped['ai2_wins']}")  # Now ai1_class is the 'second' player
+        print(f"{ai1_class.__name__} avg move time: {avg1:.4f} sec")
+        print(f"{ai2_class.__name__} avg move time: {avg2:.4f} sec")
+
+        print(f"\nSwapping players and playing another {rounds} games...")
+        results_swapped, timings_swapped = self.play_game(ai2_class, ai1_class, rounds)
+
+        print(f"\nSecond {rounds} games complete (after swapping players):")
+        print(f"{ai2_class.__name__} wins: {results_swapped['ai1_wins']}")
+        print(f"{ai1_class.__name__} wins: {results_swapped['ai2_wins']}")
         print(f"Draws: {results_swapped['draws']}")
+
+        avg1_swapped = timings_swapped['ai1_total_time'] / timings_swapped['ai1_moves'] if timings_swapped['ai1_moves'] > 0 else 0.0
+        avg2_swapped = timings_swapped['ai2_total_time'] / timings_swapped['ai2_moves'] if timings_swapped['ai2_moves'] > 0 else 0.0
+
+        print(f"{ai2_class.__name__} avg move time (as first player): {avg1_swapped:.4f} sec")
+        print(f"{ai1_class.__name__} avg move time (as second player): {avg2_swapped:.4f} sec")
 
         pygame.quit()
 
@@ -209,13 +238,15 @@ def simulate_games(ai1_class, ai2_class):
 
 if __name__ == "__main__":
 
-    #game = Connect4()
+    game = Connect4()
     #game.play(Minimax)
     #game.play(GreedyAI)
     #game.play(MonteCarloTreeSearch)
     #game.play(IterativeDeepeningAI)
 
-    simulate_games(Minimax, GreedyAI)
+    #simulate_games(Minimax, GreedyAI)
+    simulate_games(IterativeDeepeningAI, MonteCarloTreeSearch)
+
 
     """simulate_games(Minimax, GreedyAI)
     simulate_games(Minimax, MonteCarloTreeSearch)
